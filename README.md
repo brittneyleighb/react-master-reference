@@ -1,4 +1,4 @@
-# The React.js Master Reference
+# React.js Master Reference
 
 Everything in React core plus a curated list of where to go next: tutorials, courses, books, channels, and communities with plain-English explanations and analogies.
 
