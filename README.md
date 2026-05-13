@@ -1,6 +1,6 @@
 # The React.js Master Reference
 
-Everything in React core plus a curated list of where to go next: tutorials, courses, books, channels, and communities. Plain-English explanations and analogies throughout.
+Everything in React core plus a curated list of where to go next: tutorials, courses, books, channels, and communities with plain-English explanations and analogies.
 
 ## Table of Contents
 
@@ -115,27 +115,27 @@ Everything in React core plus a curated list of where to go next: tutorials, cou
 
 ## Why Use React?
 
-The short answer: components, ecosystem, and momentum. The honest answer has a few footnotes.
+Components, ecosystem, and momentum.
 
-**Analogy:** React is the standard chassis kit for web UI. It gives you the engine (rendering, state, hooks) and a way to bolt parts together (components). You bring the body work, the paint, and the route to the destination. Frameworks like Next.js are a complete car built on top.
+**Analogy:** React is the standard chassis kit for web UI, giving you the engine (rendering, state, hooks) and a way to bolt parts together (components). You bring the body work, the paint, and the route to the destination. Frameworks like Next.js are a complete car built on top.
 
 ### What React gives you
 
-- **Component thinking.** Build a piece of UI once, reuse it everywhere. Encapsulate logic, styling, and markup together. Easier to reason about than tangled DOM updates.
-- **Declarative model.** You describe what the UI should look like for any state. React handles the diffing. No more manually toggling classes or inserting nodes.
+- **Component thinking.** Build a piece of UI once, reuse it everywhere. Encapsulate logic, styling, and markup together. 
+- **Declarative model.** You describe what the UI should look like for any state, and React handles the diffing. 
 - **Massive ecosystem.** Whatever you need (forms, charts, routing, animation, drag and drop, virtualization, i18n), multiple battle-tested libraries exist.
-- **Job market reach.** React leads frontend surveys year after year. Knowing it opens the largest pool of jobs by a wide margin.
+- **Job market reach.** React leads frontend surveys year after year. 
 - **Cross-platform.** Same mental model for web (React DOM), native mobile (React Native), 3D and VR (React Three Fiber), even terminal apps (Ink).
-- **First-class TypeScript.** Strong types for components, props, hooks, and events. Refactoring large codebases is realistic.
+- **First-class TypeScript.** Strong types for components, props, hooks, and events. 
 - **Tooling and DX.** Fast hot reload, mature DevTools, profilers, established testing patterns, and AI assistants that know the API well.
-- **Long-term stability.** Backed by Meta, used by Netflix, Airbnb, Shopify, Vercel, the New York Times, and most of the modern web. Not going anywhere.
+- **Long-term stability.** Backed by Meta, used by Netflix, Airbnb, Shopify, Vercel, the New York Times, and most of the modern web. 
 
 ### What React doesn't give you
 
-- **A framework.** React is a library. Routing, data fetching, code splitting strategy, forms, auth: you wire those up yourself or adopt Next.js, Remix, or React Router v7.
-- **The fastest runtime.** Svelte, Solid, and Qwik beat React on raw performance for some workloads. React's bet is on developer experience and ecosystem, not microbenchmarks.
-- **Strong opinions.** Two React codebases can look completely different. Flexibility is great until you join a team and learn their conventions from scratch.
-- **A frozen mental model.** Server Components, Actions, and concurrent features changed how modern React is written. Older tutorials reflect a different world.
+- **A framework.** React is a library. Routing, data fetching, code splitting strategy, forms, auth: you can wire those up yourself or adopt Next.js, Remix, or React Router v7.
+- **The fastest runtime.** Svelte, Solid, and Qwik beat React on raw performance for some workloads.
+- **Strong opinions.** Two React codebases can look completely different. 
+- **A frozen mental model.** Server Components, Actions, and concurrent features changed how modern React is written.
 
 ### When something else might fit better
 
@@ -144,26 +144,22 @@ The short answer: components, ecosystem, and momentum. The honest answer has a f
 - **Graphics-heavy or game-like work.** Canvas, WebGL, or a real game engine may be a better starting point.
 - **Extreme runtime constraints.** SolidJS or Svelte may win on benchmarks for your specific case.
 
-For most product UIs in 2026, React is a safe default. Not because it's the best at any one thing, but because it's good enough at almost everything and the ecosystem fills in the gaps.
-
 ---
 
 ## A Brief History
 
-**The problem in 2011.** Facebook was building increasingly complex UIs (chat, News Feed, notifications) and engineers spent more time chasing bugs caused by data getting out of sync than they did building features. The frameworks of the day used two-way data binding, which felt magical for small apps but became impossible to debug at scale. When several parts of the UI could write to the same piece of data, tracking down a bug meant tracing every connection.
+**The problem in 2011.** Facebook was building increasingly complex UIs (chat, News Feed, notifications) and engineers were spending more time chasing bugs caused by data getting out of sync than building features. The frameworks of the day used two-way data binding, which felt magical for small apps, but became impossible to debug at scale.
 
-**Analogy:** Pre-React UIs were like maintaining a sprawling Excel spreadsheet where every cell could update every other cell. Charming on day one, terrifying on day 500.
+**Analogy:** Pre-React UIs were like maintaining a sprawling Excel spreadsheet where every cell could update every other cell. 
 
-**The idea.** Jordan Walke, an engineer at Facebook, prototyped something different. What if the UI was a pure function of state? Push new state, let the framework re-render everything, and figure out the minimum DOM changes needed. He drew inspiration from two unrelated places:
+**The idea.** Jordan Walke, an engineer at Facebook, prototyped something different. What if the UI was a pure function of state? Push new state, let the framework re-render everything, and figure out the minimum DOM changes needed. He drew inspiration from two places:
 
 - **XHP**, Facebook's internal PHP system for building UI from reusable components.
 - **Immediate-mode rendering** from game development, where the entire screen is redrawn every frame.
 
-The combination produced React. The "virtual DOM" was the trick that made "re-render everything when state changes" cheap enough to actually ship.
+This combination produced React. The "virtual DOM" was the trick that made "re-render everything when state changes" cheap enough to actually ship.
 
-**Going public.** React was first used in production on Facebook's News Feed in 2011 and Instagram in 2012. It was open-sourced in May 2013 at JSConf US. The initial reaction was mixed: developers loved the component model but hated JSX, which seemed to violate the "separation of concerns" rule everyone had been taught. Many predicted it would never catch on.
-
-It caught on.
+**Going public.** React was first used in production on Facebook's News Feed in 2011 and Instagram in 2012. It was open-sourced in May 2013 at JSConf US. The initial reaction was mixed; developers loved the component model but hated JSX, which seemed to violate the "separation of concerns" rule everyone had been taught, but React eventually gained traction.
 
 **Major milestones:**
 
@@ -176,23 +172,21 @@ It caught on.
 - **2022**: React 18 enables concurrent rendering, automatic batching, and streaming SSR.
 - **2024**: React 19 makes Server Components and Actions the forward direction.
 
-Today, React powers Facebook, Instagram, WhatsApp Web, Netflix, Airbnb, Shopify, Discord, GitHub, large parts of the New York Times, and most of the modern web.
+Today React powers Facebook, Instagram, WhatsApp Web, Netflix, Airbnb, Shopify, Discord, GitHub, large parts of the New York Times, and most of the modern web.
 
-**Why this history matters for learning.** Older tutorials reflect older eras. A 2017 tutorial means class components and lifecycle methods. A 2020 one means hooks but no concurrent features. Anything pre-2024 won't cover Server Components or Actions. The version history table in section 62 maps these eras precisely. Knowing where a tutorial sits in time helps you decide what's still current and what's been replaced.
+**Why history matters** Older tutorials reflect older eras. For example, a 2017 tutorial means class components and lifecycle methods. A 2020 one means hooks but no concurrent features. Anything pre-2024 won't cover Server Components or Actions. Knowing where a tutorial sits in time helps you decide what's still current and what's been replaced (included is a version table at the end of this doc for reference).
 
 ---
 
 ## What You Need to Know First
 
-React assumes you already know how the web works. Skipping this list is the number one reason people bounce off React.
-
-**Analogy:** React is a power tool. The tool itself is intuitive once you pick it up, but it only does its job if you brought your own wood, measurements, and safety glasses. JavaScript is the wood.
+React assumes you already know how the web works.
 
 ### Required
 
-**HTML and CSS basics.** Comfortable writing semantic HTML and styling it. Selectors, the box model, and flexbox should not be mysteries. You don't need to be a CSS wizard.
+**HTML and CSS basics.** You should be comfortable writing semantic HTML and styling it, as well as using selectors, the box model, and flexbox in CSS.
 
-**JavaScript fundamentals.** Variables, functions, conditionals, loops, objects, arrays. If `const user = { name: 'Sam' }; user.name = 'Pat'` makes sense, you're fine.
+**JavaScript fundamentals.** Variables, functions, conditionals, loops, objects, arrays.
 
 **Modern JavaScript (ES6+).** React code uses these constantly. If any are unfamiliar, learn them first:
 
@@ -209,17 +203,17 @@ React assumes you already know how the web works. Skipping this list is the numb
 
 **Closures.** A function remembers the variables from where it was defined. Hooks rely on closures heavily, and "stale closure" bugs are one of the most common React confusions.
 
-**Truthy and falsy values.** `0`, `''`, `null`, `undefined`, `NaN`, and `false` are falsy. Everything else is truthy. Matters for conditional rendering.
+**Truthy and falsy values.** `0`, `''`, `null`, `undefined`, `NaN`, and `false` are falsy. Everything else is truthy. This matters for conditional rendering.
 
 **Immutability mindset.** React state needs new references, not mutations. If you instinctively reach for `arr.push()` or `obj.x = y`, retrain to `[...arr, item]` and `{ ...obj, x: y }`.
 
 **Node.js and npm (or pnpm/yarn).** You'll run dev servers, install packages, and read `package.json`. You don't need to write Node code, but understand what `npm install`, `npm run dev`, and `node_modules` mean.
 
-**The DOM and events.** What an element is, what an event handler is, how bubbling works. React abstracts the DOM but doesn't hide it.
+**The DOM and events.** What an element is, what an event handler is, how bubbling works. React abstracts the DOM, but it doesn't hide it.
 
 ### Optional, can learn alongside
 
-- **TypeScript.** Most jobs use it. Start React in plain JS and add TypeScript when you're comfortable.
+- **TypeScript.** Many jobs use it. Start React in plain JS and add TypeScript when you're comfortable.
 - **Git and GitHub.** Essential for actually working as a developer, but separate from React itself.
 - **A bundler like Vite.** Modern tooling handles this for you. Look at the config when you're curious.
 - **Server-side basics.** Helps with Server Components and full-stack frameworks, but not required to start.
@@ -1728,7 +1722,7 @@ Worth it when you want structure and a single instructor's voice end-to-end.
 - [The Joy of React](https://www.joyofreact.com/) — Josh Comeau. Interactive, mental-model focused, beautifully produced. Best-in-class for "really understanding" React. Pricey but often discounted.
 - [Epic React](https://epicreact.dev/) — Kent C. Dodds. Workshop-style, deep on hooks, patterns, testing, and Suspense. Aimed at intermediate developers.
 - [Complete React Developer (Zero to Mastery)](https://zerotomastery.io/courses/learn-react/) — Andrei Neagoie & Yihua Zhang. Long, comprehensive, project-heavy bootcamp style.
-- [The Ultimate React Course (Jonas Schmedtmann)](https://www.udemy.com/course/the-ultimate-react-course/) — Udemy. Highly rated, modern, big projects. Wait for the Udemy sale.
+- [The Ultimate React Course (Jonas Schmedtmann)](https://www.udemy.com/course/the-ultimate-react-course/) — Udemy. Highly rated, modern, big projects. 
 - [React: The Complete Guide (Maximilian Schwarzmüller)](https://www.udemy.com/course/react-the-complete-guide-incl-redux/) — Udemy. The classic exhaustive React course. Very long.
 - [Modern React with Redux (Stephen Grider)](https://www.udemy.com/course/react-redux/) — Udemy. Good for the gradual-builder learner.
 - [Frontend Masters React Path](https://frontendmasters.com/learn/react/) — Brian Holt's Complete Intro, plus advanced courses. Subscription model, college students get a free month via GitHub Education.
@@ -1873,7 +1867,7 @@ How React compares to the main alternatives in 2026. The honest version, not the
 
 **Pick Angular when:** You're in enterprise where opinionated structure is a feature, you want batteries-included (routing, forms, HTTP, DI), or the team already knows it.
 
-**Pick Svelte when:** Bundle size and runtime perf matter, you want less code per feature, or you're building something small enough that ecosystem size doesn't bite you.
+**Pick Svelte when:** Bundle size and runtime performance matter, you want less code per feature, or you're building something small enough that ecosystem size doesn't bite you.
 
 **Pick Solid when:** You like JSX but want better performance, and you're willing to accept a smaller ecosystem.
 
