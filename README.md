@@ -1,6 +1,10 @@
 # React.js Master Reference
 
-Everything in React core plus a curated list of where to go next: tutorials, courses, books, channels, and communities with plain-English explanations and analogies.
+A broad React reference with plain-English explanations, examples, and curated courses, books, and communities.
+
+**Standards review (November 2026):** This targeted pass updates hooks, Effects, Actions, and server/client boundaries using the official [React documentation](https://react.dev/). It does **not** validate all ~2,000 lines or every illustrative snippet. React's implementation and your framework version can change behavior; check the docs for the version you deploy.
+
+**Runnable example:** [React 19 Effects and Actions](examples/react-hooks.mjs) has [behavioral tests](test/react-hooks.test.mjs) that mount real React components in a simulated DOM. Run `npm install` and `npm test` on Node.js 22+ to check that focused slice of the guide.
 
 ## Table of Contents
 
@@ -510,51 +514,59 @@ useState(() => expensiveInit());
 
 ## 9. useEffect
 
-Runs side effects after render. Fetching data, subscriptions, manually touching the DOM.
+An Effect **synchronizes a component with an external system**, such as a browser subscription, DOM widget, connection or client-side network request. An Effect runs **after React commits** updates. It is not a general-purpose place for code that happens when the user clicks or for calculating values from props.
 
-```jsx
+\`\`\`jsx
 useEffect(() => {
-  // effect
-  return () => {
-    // cleanup, runs before next effect or on unmount
-  };
-}, [deps]);
-```
+  const unsubscribe = subscribeToExternalSystem();
+  return () => unsubscribe(); // cleanup before relevant re-sync or unmount
+}, [subscribeToExternalSystem]);
+\`\`\`
 
-**Analogy:** `useEffect` is the assistant who reacts to changes. "Whenever the user logs in, send a welcome email."
+**Dependencies:** all reactive values read by the Effect must be represented. React compares them using \`Object.is\`; don't omit one just to suppress a rerun. Restructure the Effect or move user-event work into its event handler instead. [Official guide](https://react.dev/reference/react/useEffect).
 
-**Dependency variations:**
+\`\`\`jsx
+useEffect(() => {});          // after every committed render
+useEffect(() => {}, []);      // on mount; also after remount
+useEffect(() => {}, [a, b]);  // on mount and whenever a or b changes
+\`\`\`
 
-```jsx
-useEffect(() => {});            // every render
-useEffect(() => {}, []);        // once on mount
-useEffect(() => {}, [a, b]);    // when a or b changes
-```
+**Important in development:** with root-level \`<StrictMode>\`, React deliberately performs an extra **setup → cleanup → setup** cycle for Effects to reveal missing cleanup. Empty dependencies do **not** mean “once forever.” Sending a purchase, welcome email, or other non-idempotent user action from a mount Effect can perform it more than once; handle user actions in event handlers or server endpoints with proper idempotency instead. [StrictMode reference](https://react.dev/reference/react/StrictMode).
 
-**Common patterns:**
+**Client-only fetch example**, assuming \`url\`, \`setData\` and \`setError\` belong to your component:
 
-```jsx
-// Fetching
+\`\`\`jsx
 useEffect(() => {
-  let cancelled = false;
-  fetch(url).then(res => res.json()).then(data => {
-    if (!cancelled) setData(data);
-  });
-  return () => { cancelled = true; };
+  const controller = new AbortController();
+
+  async function load() {
+    try {
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) throw new Error(\`HTTP \${response.status}\`);
+      const data = await response.json();
+      if (!controller.signal.aborted) {
+        setData(data);
+        setError(null);
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) setError(error);
+    }
+  }
+  void load();
+
+  return () => controller.abort();
 }, [url]);
+\`\`\`
 
-// Event listener
-useEffect(() => {
-  const handler = e => console.log(e.key);
-  window.addEventListener('keydown', handler);
-  return () => window.removeEventListener('keydown', handler);
-}, []);
-```
+Aborting reduces wasted work and protects against a stale request overwriting newer results. **Always handle HTTP errors and rejection**. For routes, preloading, SSR and caching, prefer your framework's data loader or a library such as TanStack Query where appropriate. The [executable SearchResults sample](examples/react-hooks.mjs) is tested for stale responses, request aborts and failed HTTP status codes.
 
-**When NOT to use it:**
-- Deriving state from props: just compute it during render.
-- Transforming data for rendering: use `useMemo` or compute inline.
-- Handling user events: put the logic in the event handler.
+**When not to use an Effect:**
+- Deriving values from props/state: compute them directly during render.
+- Filtering/sorting for display: compute during render; use \`useMemo\` **only if profiling or actual expense warrants it**.
+- Handling a button click, form submission or other user action: handle it in the event handler.
+- Copying a prop into local state merely to keep the two in sync: rethink whether a second state variable is necessary.
+
+[React: You Might Not Need an Effect](https://react.dev/learn/you-might-not-need-an-effect).
 
 ---
 
@@ -590,11 +602,15 @@ return <input ref={inputRef} />;
 **Store any mutable value** (timers, previous values, instance variables):
 
 ```jsx
-const renderCount = useRef(0);
-renderCount.current += 1;
+const clickCount = useRef(0);
+function handleClick() {
+  clickCount.current += 1; // safe in event handler, not during render
+  console.log('Clicks:', clickCount.current);
+}
+// If this number must appear on screen, use useState instead.
 ```
 
-**Analogy:** `useRef` is a backpack. Stuff persists between renders, but opening the backpack doesn't make React rerender.
+**Analogy:** `useRef` is a backpack. Stuff persists between renders, but opening the backpack doesn't make React rerender. **Do not read/write `ref.current` while rendering**, except narrowly documented constant initialization patterns; use effects or event handlers. [React refs guide](https://react.dev/learn/referencing-values-with-refs).
 
 ---
 
@@ -687,20 +703,34 @@ dispatch({ type: 'add' });
 
 ## 17. useTransition
 
-Marks a state update as non-urgent so React can keep the UI responsive while it processes.
+Marks state updates as **non-urgent** so React can prepare a new render while urgent updates (such as typing) remain responsive. It does not move JavaScript work to another thread or automatically defer computation already done in an event handler.
 
-```jsx
-const [isPending, startTransition] = useTransition();
+\`\`\`jsx
+function SearchList({ items }) {
+  const [query, setQuery] = useState('');
+  const [filterQuery, setFilterQuery] = useState('');
+  const [isPending, startTransition] = useTransition();
 
-function handleChange(e) {
-  setQuery(e.target.value); // urgent: keep input responsive
-  startTransition(() => {
-    setResults(filter(e.target.value)); // non-urgent: can be interrupted
-  });
+  function handleChange(e) {
+    const next = e.target.value;
+    setQuery(next); // urgent: controlled input
+    startTransition(() => setFilterQuery(next)); // lower priority update
+  }
+
+  // Filtering occurs during the transition render, NOT in the event handler.
+  const results = useMemo(() =>
+    items.filter(item => item.includes(filterQuery)),
+    [items, filterQuery]
+  );
+
+  return <>
+    <input value={query} onChange={handleChange} />
+    <div aria-busy={isPending}>{results.join(', ')}</div>
+  </>;
 }
-```
+\`\`\`
 
-**Analogy:** You're at a coffee shop. Urgent updates (typing) go to the front of the line. Transitions are the customer who says "I'll wait, serve the others first."
+Use a stable \`key\` when rendering arrays of components. Transition updates do not control text inputs directly; keep their state urgent and transition the expensive **derived rendering**. [React useTransition](https://react.dev/reference/react/useTransition). For values that come from props or can't be updated through a setter, see \`useDeferredValue\`.
 
 ---
 
@@ -785,49 +815,86 @@ const theme = use(ThemeContext);
 
 ## 23. useActionState
 
-Manages state tied to a form action. Returns the latest result of the action and a wrapped action to use in your form.
+Tracks state and pending status for a React Action, often a form. **The Action receives the previous state as its first argument**, then form data; this differs from a plain \`<form action={submit}>\` handler, whose argument is the \`FormData\` itself.
 
-```jsx
-const [state, formAction, isPending] = useActionState(submitForm, initialState);
-return <form action={formAction}>...</form>;
-```
+\`\`\`jsx
+async function saveForm(previousState, formData) {
+  const name = String(formData.get('name') ?? '').trim();
+  if (!name) return { error: 'Name required' };
+  await save(name); // app-specific API, with server-side validation
+  return { error: '' };
+}
 
-Pairs with Server Actions or any async action function.
+function NameForm() {
+  const [state, formAction, isPending] = useActionState(
+    saveForm, { error: '' }
+  );
+
+  return <form action={formAction}>
+    <input name="name" required />
+    <button type="submit" disabled={isPending}>Save</button>
+    {state.error && <p role="alert">{state.error}</p>}
+  </form>;
+}
+\`\`\`
+
+The form can call a client Action or, with a compatible framework, a server function. [React useActionState](https://react.dev/reference/react/useActionState). A client-side validation check does not replace server-side authorization or validation.
 
 ---
 
 ## 24. useFormStatus
 
-Read the pending state of the parent `<form>`. Useful inside submit buttons.
+Reads submission status of the **nearest ancestor form**, not a form rendered by the same component. Import it from **\`react-dom\`**, not \`react\`; it needs a component **inside** the \`<form>\`.
 
-```jsx
+\`\`\`jsx
+import { useFormStatus } from 'react-dom';
+
 function SubmitButton() {
   const { pending } = useFormStatus();
-  return <button disabled={pending}>{pending ? 'Saving...' : 'Save'}</button>;
+  return <button type="submit" disabled={pending}>
+    {pending ? 'Saving…' : 'Save'}
+  </button>;
 }
-```
 
-Must be inside a `<form>` component. Doesn't take arguments.
+function SaveForm({ save }) {
+  return <form action={save}>
+    <input name="name" required />
+    <SubmitButton />
+  </form>;
+}
+\`\`\`
+
+[React DOM useFormStatus](https://react.dev/reference/react-dom/hooks/useFormStatus).
 
 ---
 
 ## 25. useOptimistic
 
-Show a temporary "optimistic" state while an async action is in flight. If it fails, React reverts.
+Show an immediate **temporary** view while a mutation is in progress. The optimistic setter must run **inside an Action or Transition**. When the Action ends, React shows the **authoritative source state**, so you must update that source state on success; on failure, display an error or recovery affordance.
 
-```jsx
+\`\`\`jsx
+// Inside a component:
+const [messages, setMessages] = useState([]);
+const [error, setError] = useState('');
 const [optimisticMessages, addOptimistic] = useOptimistic(
   messages,
-  (state, newMessage) => [...state, { ...newMessage, sending: true }]
+  (items, text) => [...items, { text, sending: true }]
 );
 
-async function sendMessage(text) {
-  addOptimistic({ text });
-  await api.send(text); // real update
+function sendMessage(text) {
+  startTransition(async () => {
+    addOptimistic(text);
+    try {
+      const saved = await api.send(text);
+      setMessages(current => [...current, saved]); // commit real state
+    } catch {
+      setError('Could not send message'); // optimistic item rolls back
+    }
+  });
 }
-```
+\`\`\`
 
-**Analogy:** Posting a tweet that shows up instantly even though the network call hasn't finished. If the call fails, the tweet disappears.
+This fragment assumes \`api.send\` and \`startTransition\` (imported from \`react\`) are available, and that the optimistic data is rendered. The [complete executable example](examples/react-hooks.mjs) implements the form and tests success/failure behavior. React Actions already invoked through an Action prop, such as \`<form action={...}>\`, provide the transition context; wrapping those again is not necessary. [Official useOptimistic reference](https://react.dev/reference/react/useOptimistic).
 
 ---
 
@@ -934,11 +1001,14 @@ const ref = useRef();
 // later: ref.current.value
 ```
 
-**Multiple fields** with one handler:
+**Multiple fields** with one handler (functional update avoids stale snapshots when changes are queued):
 
 ```jsx
 const [form, setForm] = useState({ name: '', email: '' });
-const update = e => setForm({ ...form, [e.target.name]: e.target.value });
+const update = e => {
+  const { name, value } = e.target;
+  setForm(previous => ({ ...previous, [name]: value }));
+};
 <input name="name" value={form.name} onChange={update} />
 <input name="email" value={form.email} onChange={update} />
 ```
@@ -1010,8 +1080,8 @@ function Page() {
 **Analogy:** Props are notes passed hand-to-hand down a hallway. Context is the intercom. Anyone in the building tunes in.
 
 **Caveats:**
-- Every consumer rerenders when the provider's value changes. Don't use Context for high-frequency state. Use a state library.
-- Wrap the `value` in `useMemo` if it's an object, to avoid spurious rerenders.
+- Consumers update when their subscribed provider's context value changes, compared with `Object.is`. Context is not inherently wrong for frequent changes; measure and split providers or use an external store with selectors when needed.
+- If the provider creates a new object/function on each render, consider memoizing it with correct dependencies **when unnecessary consumer updates are a measured problem**, not as a universal requirement. [React useContext](https://react.dev/reference/react/useContext).
 
 ---
 
@@ -1020,19 +1090,18 @@ function Page() {
 Functions starting with `use` that call other hooks. They package reusable stateful logic.
 
 ```jsx
-function useLocalStorage(key, initial) {
-  const [value, setValue] = useState(() => {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : initial;
-  });
+function useDocumentTitle(title) {
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
-  return [value, setValue];
+    const previous = document.title;
+    document.title = title;
+    return () => { document.title = previous; };
+  }, [title]);
 }
+
+// In a component: useDocumentTitle('Dashboard');
 ```
 
-**Analogy:** Custom hooks are kitchen gadgets you build once and reuse in every recipe.
+**Analogy:** Custom hooks are kitchen gadgets you build once and reuse in every recipe. This document-title example is intentionally safe to **render on the server** because browser access is inside the Effect, which runs only on the client. A `localStorage` hook instead needs careful SSR/hydration, malformed-JSON, storage-access, key-change and cross-tab handling; do not put an unguarded `localStorage.getItem` in a server-rendered state initializer.
 
 ---
 
@@ -1153,11 +1222,14 @@ Development-only helper that double-invokes things to surface bugs.
 </StrictMode>
 ```
 
-In dev, StrictMode:
-- Double-invokes component functions, effect setups, and state initializers.
-- Warns about deprecated patterns.
+In development, StrictMode can:
+- Invoke render-phase functions and some state initializers/updaters an extra time to detect impurity.
+- Run an extra **setup → cleanup → setup** cycle for Effects when StrictMode is enabled at the root. Nested StrictMode not at the root has different initial-effect replay behavior.
+- Re-run ref callbacks and warn about deprecated patterns.
 
-Production behavior is unaffected. If your code breaks under StrictMode, the bug was there all along (usually a missing cleanup or non-pure render).
+Production behavior is unaffected. The correct lesson is to make **render pure and effects clean up fully**, not to disable StrictMode. [Official StrictMode reference](https://react.dev/reference/react/StrictMode).
+
+
 
 ---
 
@@ -1185,10 +1257,11 @@ export default function Counter() {
 
 **Analogy:** Server components are the kitchen. Client components are the dining room. You prep what you can in the kitchen (no JS shipped to the user), and only the interactive plates make it out front.
 
-**Rules:**
-- Server components can't use hooks or browser APIs.
-- Client components can't be `async`.
-- Client components can import server components, and vice versa, with some nesting rules.
+**Rules and boundaries:**
+- Server Components can read server-side resources and can be `async`; they cannot use interactive client Hooks like `useState` or browser APIs. The restrictions are not a blanket ban on every React API (for example, server rendering supports reading suitable promises).
+- A Client Component runs in the browser and may also be prerendered on the server; its initial output must still be hydration-safe. Client Components cannot be `async` component functions in the standard React client model.
+- Server Components can **import and render Client Components**. A Client Component cannot directly import a Server Component as a server boundary; pass its rendered output as `children`/props from a Server Component instead. [React Server Components](https://react.dev/reference/rsc/server-components).
+- `'use client'` marks the client module boundary, not a guarantee that everything in that file only executes in the browser. No `'use server'` marker is needed for a Server Component; that directive denotes Server Functions.
 
 ---
 
@@ -1212,7 +1285,7 @@ import { createPost } from './actions';
 </form>
 ```
 
-Pairs with `useActionState`, `useFormStatus`, and `useOptimistic` for full form flows without manual fetch calls.
+Pairs with `useActionState`, `useFormStatus`, and `useOptimistic` for form flows. **Security:** treat every Server Function as a remotely callable endpoint; authenticate, authorize the specific user/object, validate inputs, and avoid leaking sensitive data in return values. A client form being disabled or hidden is not an authorization control. [React Server Functions security](https://react.dev/reference/rsc/use-server).
 
 ---
 
@@ -1230,7 +1303,7 @@ When you server-render HTML and then attach React on the client, "hydration" is 
 
 **Common pitfall:** Mismatch between server output and first client render. Causes errors and visual flicker. Usually triggered by using `Date.now()`, `Math.random()`, or browser-only APIs during initial render.
 
-Fix by deferring those reads until after mount (in a `useEffect`) or by using `suppressHydrationWarning` for known mismatches.
+Fix by making the first server/client render agree. If the UI truly needs client-only values, read them after hydration in an Effect or use your framework's client-only boundary. `suppressHydrationWarning` is a **last-resort, one-level escape hatch**, not a general fix; React does not guarantee it will patch the mismatched content. [React hydrateRoot guidance](https://react.dev/reference/react-dom/client/hydrateRoot).
 
 ---
 
@@ -1555,7 +1628,7 @@ src/
 - **Forgetting to clean up subscriptions.** Memory leaks and double handlers.
 - **Hydration mismatches** from non-deterministic render (Date, random, window).
 - **Reading `.current` of a ref during render.** Refs are for effects and event handlers.
-- **Passing a new object every render** to a memoized child. Wrap in `useMemo`.
+- **Unnecessary prop identity changes** to an expensive memoized child. Consider `useMemo` for a stable object with correct dependencies **when profiling shows it matters**.
 
 ---
 
@@ -1567,8 +1640,8 @@ src/
 |------|------|
 | Local memory | `useState` |
 | Complex local memory | `useReducer` |
-| Side effect after paint | `useEffect` |
-| Side effect before paint | `useLayoutEffect` |
+| Synchronize with an external system after commit | `useEffect` |
+| Measure/update layout before browser paint | `useLayoutEffect` |
 | DOM node or mutable value | `useRef` |
 | Customize ref handle | `useImperativeHandle` |
 | Read context | `useContext` or `use` |
@@ -1612,7 +1685,7 @@ src/
 - Anything before 16.8 uses class components. Translate `this.state` to `useState` and lifecycle methods to `useEffect`.
 - Tutorials from 2019 to early 2022 use hooks but predate concurrent rendering and Server Components.
 - "Modern React" usually means 18+ with hooks.
-- Server Components, `'use client'`, and Actions are React 19+ (and require a framework like Next.js to fully use).
+- React 19 formalized many Server Component and Action APIs; framework integrations and earlier experimental releases had different timelines. A full Server Components setup needs a compatible bundler/framework, while client-side form Actions can be used with React DOM.
 
 ---
 
@@ -1945,7 +2018,7 @@ function Counter() {
 
 - **`setState` merges, `useState` replaces.** `this.setState({ x: 1 })` keeps other state keys. `setX(1)` replaces the whole value. Use multiple `useState` calls, or spread for object state: `setForm({ ...form, x: 1 })`.
 - **No more `this`.** No binding, no class properties, no `this.props`. Destructure props in the function signature.
-- **Lifecycle is now effect-based.** `componentDidUpdate` checking `if (prevProps.x !== this.props.x)` becomes `useEffect(() => {}, [x])`. Cleaner.
+- **Effects are not one-for-one lifecycle methods.** Translate `componentDidUpdate` logic only if it synchronizes with an external system; derive render data during render, and handle user-triggered work in handlers. For genuine synchronization with `x`, use `useEffect(() => { /* sync */ }, [x])` and cleanup as needed.
 - **Stale closures.** A function created during one render sees that render's values. Use functional setters (`setX(prev => ...)`) or include changing values in the dependency array.
 - **Split effects by concern.** You no longer need one giant `componentDidMount`. Use multiple `useEffect`s for unrelated side effects.
 
