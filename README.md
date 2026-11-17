@@ -1001,11 +1001,14 @@ const ref = useRef();
 // later: ref.current.value
 ```
 
-**Multiple fields** with one handler:
+**Multiple fields** with one handler (functional update avoids stale snapshots when changes are queued):
 
 ```jsx
 const [form, setForm] = useState({ name: '', email: '' });
-const update = e => setForm({ ...form, [e.target.name]: e.target.value });
+const update = e => {
+  const { name, value } = e.target;
+  setForm(previous => ({ ...previous, [name]: value }));
+};
 <input name="name" value={form.name} onChange={update} />
 <input name="email" value={form.email} onChange={update} />
 ```
@@ -1077,8 +1080,8 @@ function Page() {
 **Analogy:** Props are notes passed hand-to-hand down a hallway. Context is the intercom. Anyone in the building tunes in.
 
 **Caveats:**
-- Every consumer rerenders when the provider's value changes. Don't use Context for high-frequency state. Use a state library.
-- Wrap the `value` in `useMemo` if it's an object, to avoid spurious rerenders.
+- Consumers update when their subscribed provider's context value changes, compared with `Object.is`. Context is not inherently wrong for frequent changes; measure and split providers or use an external store with selectors when needed.
+- If the provider creates a new object/function on each render, consider memoizing it with correct dependencies **when unnecessary consumer updates are a measured problem**, not as a universal requirement. [React useContext](https://react.dev/reference/react/useContext).
 
 ---
 
@@ -1087,19 +1090,18 @@ function Page() {
 Functions starting with `use` that call other hooks. They package reusable stateful logic.
 
 ```jsx
-function useLocalStorage(key, initial) {
-  const [value, setValue] = useState(() => {
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : initial;
-  });
+function useDocumentTitle(title) {
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
-  return [value, setValue];
+    const previous = document.title;
+    document.title = title;
+    return () => { document.title = previous; };
+  }, [title]);
 }
+
+// In a component: useDocumentTitle('Dashboard');
 ```
 
-**Analogy:** Custom hooks are kitchen gadgets you build once and reuse in every recipe.
+**Analogy:** Custom hooks are kitchen gadgets you build once and reuse in every recipe. This document-title example is intentionally safe to **render on the server** because browser access is inside the Effect, which runs only on the client. A `localStorage` hook instead needs careful SSR/hydration, malformed-JSON, storage-access, key-change and cross-tab handling; do not put an unguarded `localStorage.getItem` in a server-rendered state initializer.
 
 ---
 
@@ -1220,11 +1222,14 @@ Development-only helper that double-invokes things to surface bugs.
 </StrictMode>
 ```
 
-In dev, StrictMode:
-- Double-invokes component functions, effect setups, and state initializers.
-- Warns about deprecated patterns.
+In development, StrictMode can:
+- Invoke render-phase functions and some state initializers/updaters an extra time to detect impurity.
+- Run an extra **setup → cleanup → setup** cycle for Effects when StrictMode is enabled at the root. Nested StrictMode not at the root has different initial-effect replay behavior.
+- Re-run ref callbacks and warn about deprecated patterns.
 
-Production behavior is unaffected. If your code breaks under StrictMode, the bug was there all along (usually a missing cleanup or non-pure render).
+Production behavior is unaffected. The correct lesson is to make **render pure and effects clean up fully**, not to disable StrictMode. [Official StrictMode reference](https://react.dev/reference/react/StrictMode).
+
+
 
 ---
 
@@ -1252,10 +1257,11 @@ export default function Counter() {
 
 **Analogy:** Server components are the kitchen. Client components are the dining room. You prep what you can in the kitchen (no JS shipped to the user), and only the interactive plates make it out front.
 
-**Rules:**
-- Server components can't use hooks or browser APIs.
-- Client components can't be `async`.
-- Client components can import server components, and vice versa, with some nesting rules.
+**Rules and boundaries:**
+- Server Components can read server-side resources and can be `async`; they cannot use interactive client Hooks like `useState` or browser APIs. The restrictions are not a blanket ban on every React API (for example, server rendering supports reading suitable promises).
+- A Client Component runs in the browser and may also be prerendered on the server; its initial output must still be hydration-safe. Client Components cannot be `async` component functions in the standard React client model.
+- Server Components can **import and render Client Components**. A Client Component cannot directly import a Server Component as a server boundary; pass its rendered output as `children`/props from a Server Component instead. [React Server Components](https://react.dev/reference/rsc/server-components).
+- `'use client'` marks the client module boundary, not a guarantee that everything in that file only executes in the browser. No `'use server'` marker is needed for a Server Component; that directive denotes Server Functions.
 
 ---
 
@@ -1279,7 +1285,7 @@ import { createPost } from './actions';
 </form>
 ```
 
-Pairs with `useActionState`, `useFormStatus`, and `useOptimistic` for full form flows without manual fetch calls.
+Pairs with `useActionState`, `useFormStatus`, and `useOptimistic` for form flows. **Security:** treat every Server Function as a remotely callable endpoint; authenticate, authorize the specific user/object, validate inputs, and avoid leaking sensitive data in return values. A client form being disabled or hidden is not an authorization control. [React Server Functions security](https://react.dev/reference/rsc/use-server).
 
 ---
 
@@ -1297,7 +1303,7 @@ When you server-render HTML and then attach React on the client, "hydration" is 
 
 **Common pitfall:** Mismatch between server output and first client render. Causes errors and visual flicker. Usually triggered by using `Date.now()`, `Math.random()`, or browser-only APIs during initial render.
 
-Fix by deferring those reads until after mount (in a `useEffect`) or by using `suppressHydrationWarning` for known mismatches.
+Fix by making the first server/client render agree. If the UI truly needs client-only values, read them after hydration in an Effect or use your framework's client-only boundary. `suppressHydrationWarning` is a **last-resort, one-level escape hatch**, not a general fix; React does not guarantee it will patch the mismatched content. [React hydrateRoot guidance](https://react.dev/reference/react-dom/client/hydrateRoot).
 
 ---
 
@@ -1622,7 +1628,7 @@ src/
 - **Forgetting to clean up subscriptions.** Memory leaks and double handlers.
 - **Hydration mismatches** from non-deterministic render (Date, random, window).
 - **Reading `.current` of a ref during render.** Refs are for effects and event handlers.
-- **Passing a new object every render** to a memoized child. Wrap in `useMemo`.
+- **Unnecessary prop identity changes** to an expensive memoized child. Consider `useMemo` for a stable object with correct dependencies **when profiling shows it matters**.
 
 ---
 
@@ -1634,8 +1640,8 @@ src/
 |------|------|
 | Local memory | `useState` |
 | Complex local memory | `useReducer` |
-| Side effect after paint | `useEffect` |
-| Side effect before paint | `useLayoutEffect` |
+| Synchronize with an external system after commit | `useEffect` |
+| Measure/update layout before browser paint | `useLayoutEffect` |
 | DOM node or mutable value | `useRef` |
 | Customize ref handle | `useImperativeHandle` |
 | Read context | `useContext` or `use` |
@@ -1679,7 +1685,7 @@ src/
 - Anything before 16.8 uses class components. Translate `this.state` to `useState` and lifecycle methods to `useEffect`.
 - Tutorials from 2019 to early 2022 use hooks but predate concurrent rendering and Server Components.
 - "Modern React" usually means 18+ with hooks.
-- Server Components, `'use client'`, and Actions are React 19+ (and require a framework like Next.js to fully use).
+- React 19 formalized many Server Component and Action APIs; framework integrations and earlier experimental releases had different timelines. A full Server Components setup needs a compatible bundler/framework, while client-side form Actions can be used with React DOM.
 
 ---
 
@@ -2012,7 +2018,7 @@ function Counter() {
 
 - **`setState` merges, `useState` replaces.** `this.setState({ x: 1 })` keeps other state keys. `setX(1)` replaces the whole value. Use multiple `useState` calls, or spread for object state: `setForm({ ...form, x: 1 })`.
 - **No more `this`.** No binding, no class properties, no `this.props`. Destructure props in the function signature.
-- **Lifecycle is now effect-based.** `componentDidUpdate` checking `if (prevProps.x !== this.props.x)` becomes `useEffect(() => {}, [x])`. Cleaner.
+- **Effects are not one-for-one lifecycle methods.** Translate `componentDidUpdate` logic only if it synchronizes with an external system; derive render data during render, and handle user-triggered work in handlers. For genuine synchronization with `x`, use `useEffect(() => { /* sync */ }, [x])` and cleanup as needed.
 - **Stale closures.** A function created during one render sees that render's values. Use functional setters (`setX(prev => ...)`) or include changing values in the dependency array.
 - **Split effects by concern.** You no longer need one giant `componentDidMount`. Use multiple `useEffect`s for unrelated side effects.
 
