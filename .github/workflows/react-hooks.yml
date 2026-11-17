@@ -1,0 +1,27 @@
+name: React 19 reference behavior checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  hooks:
+    name: React examples (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install pinned testing dependencies
+        run: npm install --no-audit --no-fund
+      - name: Test StrictMode, data-fetch races and optimistic Actions
+        run: npm test
+      - name: Verify standalone example syntax
+        run: node --check examples/react-hooks.mjs
