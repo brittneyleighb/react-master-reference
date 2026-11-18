@@ -6,6 +6,12 @@ A broad React reference with plain-English explanations, examples, and curated c
 
 **Runnable example:** [React 19 Effects and Actions](examples/react-hooks.mjs) has [behavioral tests](test/react-hooks.test.mjs) that mount real React components in a simulated DOM. Run `npm install` and `npm test` on Node.js 22+ to check that focused slice of the guide.
 
+## React in one picture
+
+React turns changing application data into a user interface. A component receives inputs, calculates what should appear, and React updates the browser to match. The central questions are where a piece of state should live, what should trigger a re-render, and which work belongs outside rendering.
+
+For a first read: **components, JSX, props, and state** → **events and forms** → **Effects and external systems** → **shared state** → **server/client boundaries and performance**.
+
 ## Table of Contents
 
 **Introduction**
