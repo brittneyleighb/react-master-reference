@@ -12,6 +12,14 @@ React turns changing application data into a user interface. A component receive
 
 For a first read: **components, JSX, props, and state** → **events and forms** → **Effects and external systems** → **shared state** → **server/client boundaries and performance**.
 
+## Try it safely
+
+**Predict:** what should happen before you act.  
+**Try:** use a local, reversible example.  
+**Explain:** describe the result in your own words.
+
+Build a component with one button and one `useState` value. Predict which parts of the page change after a click; then add a `console.log` in the component body and observe that React reruns the component to calculate the next UI.
+
 ## Table of Contents
 
 **Introduction**
